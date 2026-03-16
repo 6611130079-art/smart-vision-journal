@@ -22,7 +22,7 @@ class JournalBloc extends Bloc<JournalEvent, JournalState> {
     
     result.fold(
       (error) => emit(JournalError(error.toString())), // ถ้าพัง ส่ง State Error ไปบอก UI
-      (text) => emit(JournalTextScanned(text)),        // ถ้าสำเร็จ ส่งข้อความที่สแกนได้ไปโชว์
+      (text) => emit(JournalTextScanned(text, saved: false)),        // ถ้าสำเร็จ ส่งข้อความที่สแกนได้ไปโชว์
     );
   }
 
@@ -37,21 +37,41 @@ class JournalBloc extends Bloc<JournalEvent, JournalState> {
   }
 
   Future<void> _onSaveJournal(SaveJournalEvent event, Emitter<JournalState> emit) async {
-    if (state is! JournalTextSummarized) return;
+    late JournalEntry entry;
 
-    final current = state as JournalTextSummarized;
+    if (state is JournalTextScanned) {
+      final current = state as JournalTextScanned;
+      entry = JournalEntry(
+        text: current.scannedText,
+        summary: current.scannedText, // ใช้ข้อความต้นฉบับเป็นสรุปชั่วคราว
+        createdAt: DateTime.now(),
+      );
+    } else if (state is JournalTextSummarized) {
+      final current = state as JournalTextSummarized;
+      entry = JournalEntry(
+        text: current.originalText,
+        summary: current.summary,
+        createdAt: DateTime.now(),
+      );
+    } else {
+      return; // ถ้า state ไม่ใช่ scanned หรือ summarized ไม่ทำอะไร
+    }
+
     emit(JournalLoading());
-
-    final entry = JournalEntry(
-      text: current.originalText,
-      summary: current.summary,
-      createdAt: DateTime.now(),
-    );
 
     final result = await repository.saveJournalEntry(entry);
     result.fold(
       (error) => emit(JournalError(error.toString())),
-      (_) => emit(JournalTextSummarized(originalText: current.originalText, summary: current.summary, saved: true)),
+      (_) {
+        // บันทึกสำเร็จ emit state ใหม่ด้วย saved = true
+        if (state is JournalTextScanned) {
+          final current = state as JournalTextScanned;
+          emit(JournalTextScanned(current.scannedText, saved: true));
+        } else if (state is JournalTextSummarized) {
+          final current = state as JournalTextSummarized;
+          emit(JournalTextSummarized(originalText: current.originalText, summary: current.summary, saved: true));
+        }
+      },
     );
   }
 }

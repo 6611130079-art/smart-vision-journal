@@ -2,7 +2,8 @@ import 'package:get_it/get_it.dart';
 import '../../features/journal/data/datasources/ai_remote_datasource.dart';
 import '../../features/journal/data/datasources/ml_vision_datasource.dart';
 // --- 1. เพิ่ม Import ไฟล์ Local Data Source ---
-import '../../features/journal/data/datasources/journal_local_datasource.dart'; 
+import '../../features/journal/data/datasources/journal_local_datasource.dart';
+import '../../features/journal/data/datasources/offline_summary_datasource.dart'; 
 import '../../features/journal/data/repositories/journal_repository_impl.dart';
 import '../../features/journal/domain/repositories/journal_repository.dart';
 import '../network/dio_client.dart';
@@ -33,6 +34,11 @@ Future<void> initDI() async {
     () => JournalLocalDataSource(),
   );
 
+  // --- 2b. ลงทะเบียน Offline Summary (สำหรับใช้เมื่อไม่มีเน็ต) ---
+  sl.registerLazySingleton<OfflineSummaryDataSource>(
+    () => OfflineSummaryDataSource(),
+  );
+
   // ----------------------------------------------------------------------
   // 3. ลงทะเบียน Repository (ตัวกลางจัดการข้อมูล)
   // ----------------------------------------------------------------------
@@ -41,6 +47,7 @@ Future<void> initDI() async {
       aiRemoteDataSource: sl(),
       mlVisionDataSource: sl(),
       localDataSource: sl(), // --- 3. เพิ่มบรรทัดนี้ เพื่อส่ง Database เข้าไปให้ Repository ---
+      offlineSummaryDataSource: sl(), // --- เพิ่มออฟไลน์ด้วย ---
     ),
   );
 

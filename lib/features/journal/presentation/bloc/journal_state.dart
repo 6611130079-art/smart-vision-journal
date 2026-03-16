@@ -10,10 +10,12 @@ class JournalLoading extends JournalState {} // สถานะกำลัง�
 
 class JournalTextScanned extends JournalState { // สแกนข้อความสำเร็จ
   final String scannedText;
-  JournalTextScanned(this.scannedText);
+  final bool saved; // เพิ่ม flag บันทึกแล้วหรือยัง
+
+  JournalTextScanned(this.scannedText, {this.saved = false});
 
   @override
-  List<Object?> get props => [scannedText];
+  List<Object?> get props => [scannedText, saved];
 }
 
 class JournalTextSummarized extends JournalState { // สรุปข้อความสำเร็จ

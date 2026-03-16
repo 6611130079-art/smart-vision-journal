@@ -5,16 +5,19 @@ import '../models/journal_entry_model.dart';
 import '../datasources/ai_remote_datasource.dart';
 import '../datasources/ml_vision_datasource.dart';
 import '../datasources/journal_local_datasource.dart'; // <-- Import เพิ่ม
+import '../datasources/offline_summary_datasource.dart'; // <-- Import ออฟไลน์
 
 class JournalRepositoryImpl implements JournalRepository {
   final AIRemoteDataSource aiRemoteDataSource;
   final MLVisionDataSource mlVisionDataSource;
   final JournalLocalDataSource localDataSource; // <-- เพิ่มตัวแปรสำหรับ Database
+  final OfflineSummaryDataSource offlineSummaryDataSource; // <-- เพิ่มตัวแปรสำหรับออฟไลน์
 
   JournalRepositoryImpl({
     required this.aiRemoteDataSource,
     required this.mlVisionDataSource,
     required this.localDataSource, // <-- บังคับรับค่าผ่าน Constructor
+    required this.offlineSummaryDataSource, // <-- เพิ่มตรงนี้
   });
 
   @override
@@ -34,10 +37,17 @@ class JournalRepositoryImpl implements JournalRepository {
   @override
   Future<Either<Exception, String>> summarizeText(String text) async {
     try {
+      // พยายามใช้ AI ก่อน
       final summary = await aiRemoteDataSource.summarizeText(text);
       return Right(summary);
     } catch (e) {
-      return Left(Exception('AI สรุปข้อความล้มเหลว: $e'));
+      // ถ้า AI ล้มเหลว (ขาดเน็ตหรือ API error) ให้ใช้ออฟไลน์แทน
+      try {
+        final offlineSummary = await offlineSummaryDataSource.summarizeTextOffline(text);
+        return Right(offlineSummary); // ส่งสรุปออฟไลน์กลับไป
+      } catch (offlineError) {
+        return Left(Exception('AI สรุปข้อความล้มเหลว และไม่สามารถสรุปแบบออฟไลน์ได้: $offlineError'));
+      }
     }
   }
 

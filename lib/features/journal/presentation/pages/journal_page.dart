@@ -64,7 +64,7 @@ class JournalView extends StatelessWidget {
           }
 
           // ถ้าบันทึกสำเร็จแล้ว ให้โชว์ SnackBar
-          if (state is JournalTextSummarized && state.saved) {
+          if ((state is JournalTextScanned && state.saved) || (state is JournalTextSummarized && state.saved)) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('บันทึกเรียบร้อยแล้ว'), backgroundColor: Colors.green),
             );
@@ -110,20 +110,37 @@ class JournalView extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
                     child: Text(
-                      state is JournalTextScanned ? state.scannedText : 
+                      state is JournalTextScanned ? (state.saved ? 'บันทึกแล้ว (ดูบันทึกทั้งหมด)' : state.scannedText) :
                       state is JournalTextSummarized ? 'สแกนสำเร็จแล้ว (ดูผลสรุปด้านล่าง)' : 'ยังไม่มีข้อมูล',
                       maxLines: 10,
                       
                     ),
                   ),
 
-                  // --- ปุ่มสรุปด้วย AI ---
-                  if (state is JournalTextScanned)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                      onPressed: () => context.read<JournalBloc>().add(SummarizeTextEvent(text: state.scannedText)),
-                      child: const Text('สรุปเนื้อหาด้วย Gemini AI'),
+                  // --- ปุ่มสรุปด้วย AI และบันทึก ---
+                  if (state is JournalTextScanned && !state.saved) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                            onPressed: () => context.read<JournalBloc>().add(SummarizeTextEvent(text: state.scannedText)),
+                            child: const Text('สรุปเนื้อหาด้วย Gemini AI'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            onPressed: () => context.read<JournalBloc>().add(SaveJournalEvent()),
+                            child: const Text('บันทึก'),
+                          ),
+                        ),
+                      ],
                     ),
+                  ] else if (state is JournalTextScanned && state.saved) ...[
+                    const Text('บันทึกเรียบร้อยแล้ว', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                  ],
 
                   const SizedBox(height: 20),
 
@@ -134,7 +151,17 @@ class JournalView extends StatelessWidget {
                       padding: const EdgeInsets.all(10),
                       margin: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                      child: Text(state.summary),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(state.summary),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '💡 หมายเหตุ: หากไม่มีเน็ต จะแสดงสรุปแบบออฟไลน์ (อัตโนมัติ)',
+                            style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
                     ),
 
                     if (!state.saved)
